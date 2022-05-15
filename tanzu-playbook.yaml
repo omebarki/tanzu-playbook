@@ -1,0 +1,59 @@
+---
+#ansible-playbook  --connection=local tanzu-playbook.yaml  -i ./environments/lab -i 127.0.0.1,
+- name: Tanzu Playbook
+  hosts: all
+  tasks:
+    - name: Crate namespaces
+      kubernetes.core.k8s:
+        kubeconfig: "{{ k8s.cluster.configFile }}"
+        name: "{{ item.namespace }}"
+        api_version: v1
+        kind: Namespace
+        state: present
+      loop: "{{ k8s.envs }}"
+
+
+    - name: Crate PVs
+      kubernetes.core.k8s:
+        kubeconfig: "{{ k8s.cluster.configFile }}"
+        definition:
+          apiVersion: v1
+          kind: PersistentVolume
+          metadata:
+            annotations:
+              pv.kubernetes.io/bound-by-controller: "yes"
+            name: "pv-{{ k8s.tanzuCluster }}-{{ item.namespace }}"
+            namespace: "{{ item.namespace }}"
+          spec:
+            accessModes:
+            - ReadWriteMany
+            capacity:
+              storage: "{{ item.storage.pv.size }}"
+            nfs:
+              path: /TANZU-{{ k8s.tanzuEnv }}/{{ k8s.tanzuCluster }}/{{ item.namespace }}
+              server: "{{ item.storage.pv.nfsserver }}"
+            persistentVolumeReclaimPolicy: Retain
+            volumeMode: Filesystem
+      loop: "{{ k8s.envs }}"
+
+    - name: Crate PVCs
+      kubernetes.core.k8s:
+        kubeconfig: "{{ k8s.cluster.configFile }}"
+        definition:
+          apiVersion: v1
+          kind: PersistentVolumeClaim
+          metadata:
+            annotations:
+              pv.kubernetes.io/bind-completed: "yes"
+            name: "pvc-{{ k8s.tanzuCluster }}-{{ item.namespace }}"
+            namespace: "{{ item.namespace }}"
+          spec:
+            accessModes:
+            - ReadWriteMany
+            resources:
+              requests:
+                storage: "{{ item.storage.pv.size }}"
+            storageClassName: ""
+            volumeMode: Filesystem
+            volumeName: "pv-{{ k8s.tanzuCluster }}-{{ item.namespace }}"
+      loop: "{{ k8s.envs }}"

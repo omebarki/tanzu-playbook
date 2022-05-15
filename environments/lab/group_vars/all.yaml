@@ -1,0 +1,16 @@
+k8s:
+  cluster:
+    configFile: lab/k8s/config
+  tanzuEnv: LAB
+  tanzuCluster: cluserName
+  envs:
+    - namespace: nfr
+      storage:
+        pv:
+          nfsserver: server1
+          size: "30Gi"
+    - namespace: int
+      storage:
+        pv:
+          nfsserver: server1
+          size: "10Gi"
